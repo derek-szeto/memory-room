@@ -24,12 +24,23 @@ Requires Node 22.13+ (Node 24 recommended).
 
 ```powershell
 npx --yes pnpm@10.34.4 install --frozen-lockfile
-npm run build
-npm run db:local
 npm run dev
 ```
 
-Open the URL printed by the dev server. Without Supabase settings, the original D1 backend stays available. File uploads require Supabase. D1 and Supabase are independent stores: setting Supabase configuration switches to Supabase; it does not migrate existing D1 records or identities.
+Open the URL printed by the dev server. Supabase is the only backend: the legacy D1 binding is disabled in `.openai/hosting.json` (set `"d1": "DB"` and run `npm run build && npm run db:local` to bring the old local fallback back).
+
+## Deploy
+
+The app is a Cloudflare Worker and deploys to a free `https://memory-room.<your-subdomain>.workers.dev` URL.
+
+```powershell
+npx wrangler login                                  # once, opens the browser
+npm run deploy                                      # build + wrangler deploy
+npx wrangler secret put SUPABASE_URL --name memory-room              # once; persists across deploys
+npx wrangler secret put SUPABASE_PUBLISHABLE_KEY --name memory-room  # once; publishable key only
+```
+
+The first `npm run deploy` creates the Worker. Set both secrets after it, then open the URL it prints. Then, in Supabase **Authentication → URL Configuration**, set **Site URL** to that HTTPS URL and keep `http://127.0.0.1:5173` in the redirect allowlist for local work. Confirmation emails link to the Site URL.
 
 ## Connect Supabase
 
@@ -48,7 +59,7 @@ SUPABASE_PUBLISHABLE_KEY=sb_publishable_YOUR_KEY
 5. Restart `npm run dev`. You should see the Supabase sign-in screen. Create an account, confirm its email, and sign in. Create a workspace, insert a checklist, then insert a files section and upload a file.
 6. In another browser/private window, use a different account. Share the website URL and the workspace owner's invite code. Join with the code and verify edits synchronize. Each member can edit and delete every section. Only the owner sees the invitation code; invitations currently have no expiry or revocation.
 
-For hosting, set the same two variables as Worker environment settings and redeploy. This app needs a server; do not host it as static files. No service key or PostgreSQL password is needed at runtime. Supabase Auth validates the user's JWT and the SQL functions check membership server-side; local test headers do not grant Supabase access.
+For hosting, set the same two variables as Worker secrets (see **Deploy**). This app needs a server; do not host it as static files. No service key or PostgreSQL password is needed at runtime. Supabase Auth validates the user's JWT and the SQL functions check membership server-side; local test headers do not grant Supabase access.
 
 ## Storage
 
